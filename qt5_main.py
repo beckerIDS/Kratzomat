@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton, QLayout
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
 
@@ -32,21 +32,22 @@ class Kratzomat(QWidget):
         self.positions = [(x, y) for x in range(self.SUMME_ZEILEN) for y in range(self.SUMME_SPALTEN)]  # Alle Positionen im GRID
         self.romans = range(self.PREFIX_ZEILEN, self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR) # Vektor mit Positionen für römische Zahlen
         self.aufgabenpos = self._calcHeaderPositions()
-        test = self._calcPointColumns()
-        print(f"Aufgabenpos: {self.aufgabenpos}")
-        print(f"ZeilenSumme: {self.SUMME_ZEILEN}, Spaltensumme: {self.SUMME_SPALTEN}")
+        self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN = self._calcPointColumns()
+        self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
         self.initUI()
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
         # |
         # v
         # y entspricht SUMME_SPALTEN entspricht positions[0]
-
+        self.CUR_ZEILE = self.PREFIX_ZEILEN
+        self.CUR_SPALTE = self.PREFIX_SPALTEN
+        self._highlightCurCell()
 
     def initUI(self):   
-        grid = QGridLayout()  
-        self.setLayout(grid)
-        
+        self.grid = QGridLayout()  
+        self.setLayout(self.grid)
+        self._widgets_points = list()
         # Loop über GRID und beschrifte Felder
         for idx, position in enumerate(self.positions):
             # 1. Zeile Clear Button
@@ -67,11 +68,19 @@ class Kratzomat(QWidget):
                 # X0,Y-Range: Roman Zahlen für Mappen
                 elif position[1] == 0 and position[0] in self.romans:
                     text = self._to_roman_numeral(position[0]-1)
+                # Buchstaben Übersicht
+                elif position[0] == 1 and position[1] in self.PUNKTE_ZEILEN:
+                    text = self.BUCHSTABEN_ZEILEN[np.where(self.PUNKTE_ZEILEN == position[1])]
+                    text = text[0]
+                # Punkte-Felder
+                elif position[1] in self.PUNKTE_ZEILEN and position[0] in self.romans:
+                    text = "---"
+                    self._widgets_points.append(position)
                 else:
                     text = f"F{idx},X{position[0]},Y{position[1]}"
                 element = QLabel(text)
 
-            grid.addWidget(element, *position)
+            self.grid.addWidget(element, *position)
         self.move(300, 150)
         self.setWindowTitle('Kratzomat 3000')  
         self.show()
@@ -130,14 +139,18 @@ class Kratzomat(QWidget):
     
 
     def _calcPointColumns(self) -> np.array:
-        result = np.empty((1,sum(self.PUNKTE_PRO_AUFGABE)),int)
+        point_col = np.empty((1,sum(self.PUNKTE_PRO_AUFGABE)),int)
+        point_letters = np.empty((1,sum(self.PUNKTE_PRO_AUFGABE)),str)
         for r_idx,row in enumerate(zip(self.aufgabenpos,self.PUNKTE_PRO_AUFGABE)):
             for c_idx in range(row[1]):
                 index = row[0][1] - r_idx + c_idx - 1
                 print(f"index: {index}")
-                result[0][index] = row[0][1] + c_idx
-        print(f"result: {result}")
-        return result
+                point_col[0][index] = row[0][1] + c_idx
+                point_letters[0][index] = chr(65+c_idx)
+        return point_col, point_letters
+    
+    def _highlightCurCell(self):
+        pass
 
 if __name__ == '__main__':
      debug = 0
