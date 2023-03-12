@@ -1,8 +1,10 @@
 import sys
 import numpy as np
-from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton, QLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
+import time
+
 
 class Kratzomat(QWidget):
     key_up = Qt.Key.Key_Up.value
@@ -34,6 +36,8 @@ class Kratzomat(QWidget):
         self.aufgabenpos = self._calcHeaderPositions()
         self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN = self._calcPointColumns()
         self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
+        self.AUFGABEN_SUMMEN_POSITION = self._calcAufgabenSumPositions()
+        self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()
         self.initUI()
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
@@ -51,6 +55,8 @@ class Kratzomat(QWidget):
         # Loop über GRID und beschrifte Felder
         for idx, position in enumerate(self.positions):
             # 1. Zeile Clear Button
+            row_span = None
+            col_span = None
             if position == (0, 0):
                 element = QPushButton("Clear")
                 element.clicked.connect(self._clearUI)
@@ -59,12 +65,40 @@ class Kratzomat(QWidget):
                 # X0,Y1: Mappe, damit roman Zahlen ersichtlich sind
                 if position == (1,0):
                     text = "Mappe:"
+                elif position == (self.SUMME_ZEILEN-1,self.SUMME_SPALTEN-1):
+                    text = "SUMMISUM"
                 # X0,Yend: Text für Spaltensumme
                 elif position == (self.SUMME_ZEILEN-1,0): # -1 weil bei 0 gestartet wird
-                    text = "Spaltensumme:"
+                    text = "Spalten-" + "\u03A3" + ":"
                 # Xend,Y0: Text für Zeilensumme
                 elif position == (0,self.SUMME_SPALTEN-1):
-                    text = "Zeilensumme:"
+                    text = "Zeilen-" + "\u03A3" + ":"
+                    row_span = 2
+                    col_span = 1
+                elif position == (1,self.SUMME_SPALTEN-1):
+                    text = None
+                # Aufgaben-Überschriften
+                elif position[0] == 0 and position[1] in self.aufgabenpos[:,1]:
+                    idx = np.where(self.aufgabenpos[:,1] == position[1])
+                    idx = idx[0][0]
+                    text = self.AUFGABEN_PRO_KLASUR[idx]
+                    row_span = 1
+                    col_span = self.aufgabenpos[idx,3]
+                # Einzel Summen-Aufgaben
+                elif position[0] == (self.SUMME_ZEILEN-1) and position[1] in self.aufgabenpos[:,1]:
+                    idx = np.where(self.aufgabenpos[:,1] == position[1])
+                    idx = idx[0][0]
+                    text = "AUFGABEN-" + "\u03A3"
+                    row_span = 1
+                    col_span = self.aufgabenpos[idx,3]
+                # Summenzeichen für Aufgaben hinzufügen
+                elif position[0] == 1 and position[1] in self.AUFGABEN_SUMMEN_POSITION:
+                    text = "\u03A3"
+                # Übrig gebliebene Zeilen entfernen
+                elif position[0] == 0:
+                    text = None
+                elif position[0] == self.SUMME_ZEILEN-1:
+                    text = None
                 # X0,Y-Range: Roman Zahlen für Mappen
                 elif position[1] == 0 and position[0] in self.romans:
                     text = self._to_roman_numeral(position[0]-1)
@@ -74,13 +108,23 @@ class Kratzomat(QWidget):
                     text = text[0]
                 # Punkte-Felder
                 elif position[1] in self.PUNKTE_ZEILEN and position[0] in self.romans:
-                    text = "---"
+                    text = "-"
                     self._widgets_points.append(position)
                 else:
                     text = f"F{idx},X{position[0]},Y{position[1]}"
-                element = QLabel(text)
-
-            self.grid.addWidget(element, *position)
+                if text is not None:
+                    element = QLabel(text)
+                else:
+                    element = None
+            if element is not None:
+                if (col_span is None) and (row_span is None):
+                    self.grid.addWidget(element, *position)
+                else:
+                    #align = Qt.AlignmentFlag.AlignCenter
+                    #align = Qt.AlignmentFlag.AlignRight
+                    #align = Qt.AlignmentFlag.AlignLeft
+                    align = Qt.AlignmentFlag.AlignVCenter
+                    self.grid.addWidget(element, *position,row_span,col_span,align)
         self.move(300, 150)
         self.setWindowTitle('Kratzomat 3000')  
         self.show()
@@ -131,23 +175,47 @@ class Kratzomat(QWidget):
     
     def _calcHeaderPositions(self) -> np.array:
         PUNKTE_PRO_AUFGABE_INKL_SIGMA = [x+1 for x in self.PUNKTE_PRO_AUFGABE] # Spaltenbreite muss um jeweils 1 erhöht werden damit Platz für SIGMA Zeichen ist
-        aufgabenpos = np.empty((4,len(self.PUNKTE_PRO_AUFGABE)),int)
+        aufgabenpos = np.zeros((4,len(self.PUNKTE_PRO_AUFGABE)),int)
         for idx, val in enumerate(self.PUNKTE_PRO_AUFGABE):
             aufgabenpos[idx][1] = self.PREFIX_SPALTEN+sum(PUNKTE_PRO_AUFGABE_INKL_SIGMA[:idx])
             aufgabenpos[idx][3] = val+1
         return aufgabenpos
     
+    def _calcAufgabenSumPositions(self) -> np.array:
+        size = len(self.PUNKTE_PRO_AUFGABE)
+        aufgabensum = np.zeros([1,size],int)
+        for idx in range(size):
+            aufgabensum[0][idx] = self.aufgabenpos[:,1][idx] + self.aufgabenpos[:,3][idx] - 1
+        print(f"AufgabenSummenPosition: {aufgabensum}")
+        return aufgabensum
 
     def _calcPointColumns(self) -> np.array:
-        point_col = np.empty((1,sum(self.PUNKTE_PRO_AUFGABE)),int)
-        point_letters = np.empty((1,sum(self.PUNKTE_PRO_AUFGABE)),str)
+        size = sum(self.PUNKTE_PRO_AUFGABE)
+        point_col = np.zeros((1,size),int)
+        point_letters = np.zeros((1,size),str)
         for r_idx,row in enumerate(zip(self.aufgabenpos,self.PUNKTE_PRO_AUFGABE)):
             for c_idx in range(row[1]):
                 index = row[0][1] - r_idx + c_idx - 1
-                print(f"index: {index}")
                 point_col[0][index] = row[0][1] + c_idx
                 point_letters[0][index] = chr(65+c_idx)
         return point_col, point_letters
+    
+    def _initPUNKTEMATRIX(self):
+        x = self.PUNKTE_ZEILEN.size
+        y = self.MAPPEN_PRO_KLAUSUR
+        punktematrix = np.empty([y,x],dtype=QLabel)
+        for i_x, x in enumerate(punktematrix):
+            for i_y, y in enumerate(x):
+                print(f"({self.PUNKTE_ZEILEN[0][i_y]},{i_x})")
+                label = self._getLabelfromCoord(i_x,i_y)
+
+                
+        print("HIER WEITERMACHEN")
+
+    def _getLabelfromCoord(self,row,col) -> QLabel:
+        lay = self.layout()
+        print("HIER WEITERMACHEN")
+        
     
     def _highlightCurCell(self):
         pass
