@@ -39,14 +39,14 @@ class Kratzomat(QWidget):
         self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
         self.AUFGABEN_SUMMEN_POSITION = self._calcAufgabenSumPositions()
         self.initUI()
-        #self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()          -> HIER WEITERMACHEN
+        self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()       #   -> HIER WEITERMACHEN
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
         # |
         # v
         # y entspricht SUMME_SPALTEN entspricht positions[0]
-        self.CUR_ZEILE = self.PREFIX_ZEILEN
-        self.CUR_SPALTE = self.PREFIX_SPALTEN
+        self.CUR_ZEILE = 0
+        self.CUR_SPALTE = 0
         self._highlightCurCell()
 
     def initUI(self):   
@@ -59,8 +59,9 @@ class Kratzomat(QWidget):
             row_span = None
             col_span = None
             if position == (0, 0):
-                element = QPushButton("Clear")
-                element.clicked.connect(self._clearUI)
+                # element = QPushButton("Clear")
+                # element.clicked.connect(self._clearUI)
+                element = None                              # -> TEMPORÄRER FIX
             else:   # Alle anderen Instrumente sind QLabel's
                 # Labels unterscheiden sich nur im Text:
                 # X0,Y1: Mappe, damit roman Zahlen ersichtlich sind
@@ -133,17 +134,24 @@ class Kratzomat(QWidget):
     def keyPressEvent(self, a0: QtGui.QKeyEvent) -> None:
         for widget in self.children():
             if isinstance(widget,QLabel):
-                print(f"Widget-Text: {widget.text()} at position x{widget.x()} - y{widget.y()}")
+                pass
+                #print(f"Widget-Text: {widget.text()} at position x{widget.x()} - y{widget.y()}")
             elif isinstance(widget,QGridLayout):
                 pass
         if a0.key() == self.key_up:
             print("Key up pressed")
+            self.setPoint(1)
+            self.step(1)
         elif a0.key() == self.key_down:
+            self.setPoint()
+            self.step(1)
             print("Key down pressed")
         elif a0.key() == self.key_left:
             print("Key left pressed")
+            self.step(-1)
         elif a0.key() == self.key_right:
             print("Key right pressed")
+            self.step(1)
         elif a0.key() == self.key_esc:
             print("Key escape pressed")
             self.close()    # Funktion beenden, wenn Esc gedrückt wird
@@ -187,7 +195,7 @@ class Kratzomat(QWidget):
         aufgabensum = np.zeros([1,size],int)
         for idx in range(size):
             aufgabensum[0][idx] = self.aufgabenpos[:,1][idx] + self.aufgabenpos[:,3][idx] - 1
-        print(f"AufgabenSummenPosition: {aufgabensum}")
+        #print(f"AufgabenSummenPosition: {aufgabensum}")
         return aufgabensum
 
     def _calcPointColumns(self) -> np.array:
@@ -200,8 +208,31 @@ class Kratzomat(QWidget):
                 point_col[0][index] = row[0][1] + c_idx
                 point_letters[0][index] = chr(65+c_idx)
         return point_col, point_letters
+
+    def step(self,step: int) -> None:
+        # Get current position:
+        c_r = self.CUR_ZEILE
+        c_c = self.CUR_SPALTE
+        # Überhang berechnen
+        next_c =  c_c + step
+        # Positiver Schritt
+        if next_c >= self.PUNKTE_ZEILEN.size and c_r < self.MAPPEN_PRO_KLAUSUR-1 and step > 0:
+            self.CUR_SPALTE = next_c - self.PUNKTE_ZEILEN.size
+            self.CUR_ZEILE += 1
+        elif next_c >= 0 and next_c < self.PUNKTE_ZEILEN.size and step > 0:
+            self.CUR_SPALTE += step
+        elif next_c > 0 and c_r > self.PREFIX_SPALTEN and step < 0:
+            self.CUR_SPALTE = next_c
+        elif next_c == 0 and step < 0:
+            self.CUR_SPALTE = 0
+            print("HIER WEITERMACHEN !!!!!!!!!!!!!!")
+        else:
+            print("Nichts verschoben")
+        self._highlightCurCell()
+        print(f"CUR_SPALTE: {self.CUR_SPALTE}, CUR_ZEILE: {self.CUR_ZEILE}")
+        
     
-    def _initPUNKTEMATRIX(self):
+    def _initPUNKTEMATRIX(self) -> np.empty:
         x = self.PUNKTE_ZEILEN.size
         y = self.MAPPEN_PRO_KLAUSUR
         punktematrix = np.empty([y,x],dtype=QLabel)
@@ -210,11 +241,13 @@ class Kratzomat(QWidget):
                 # Get corresponding rows and colums of point fields
                 i_col = self.PUNKTE_ZEILEN[0][i_x]
                 i_row = self.PUNKTE_SPALTEN[i_y]
-                print(f"({self.PUNKTE_ZEILEN[0][i_y]},{i_x})")
-                punktematrix[i_x][i_y] = self._getLabelfromCoord(i_row,i_col)
+                #print(f"({self.PUNKTE_ZEILEN[0][i_y]},{i_x})")
+                punktematrix[i_y][i_x] = self._getLabelfromCoord(i_row,i_col)
+        return punktematrix
 
-                
-        print("HIER WEITERMACHEN")
+    def setPoint(self,point: int = 0) -> None:
+        widget = self.PUNKTE_MATRIX[self.CUR_ZEILE][self.CUR_SPALTE]
+        widget.setText(str(point))
 
     def _getLabelfromCoord(self,row,col) -> QLabel:
         lay = self.layout()
@@ -229,7 +262,14 @@ class Kratzomat(QWidget):
         
     
     def _highlightCurCell(self):
-        pass
+        for index, widget in np.ndenumerate(self.PUNKTE_MATRIX):
+            if index[0] == self.CUR_ZEILE and index[1] == self.CUR_SPALTE:
+                widget.setStyleSheet("background-color: lightgreen")
+            elif index[0] == self.CUR_ZEILE or index[1] == self.CUR_SPALTE:
+                widget.setStyleSheet("background-color: yellow")
+            else:
+                widget.setStyleSheet("background-color: none")
+
 
 if __name__ == '__main__':
      debug = 0
