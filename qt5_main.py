@@ -31,14 +31,15 @@ class Kratzomat(QWidget):
         self.SUFFIX_ZEILEN = 1
         self.SUMME_ZEILEN = self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR + self.SUFFIX_ZEILEN
         # Benötigte Matrizen und Vektoren definieren
+        self.PUNKTE_SPALTEN = np.arange(0,self.MAPPEN_PRO_KLAUSUR) + self.PREFIX_ZEILEN
         self.positions = [(x, y) for x in range(self.SUMME_ZEILEN) for y in range(self.SUMME_SPALTEN)]  # Alle Positionen im GRID
         self.romans = range(self.PREFIX_ZEILEN, self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR) # Vektor mit Positionen für römische Zahlen
         self.aufgabenpos = self._calcHeaderPositions()
         self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN = self._calcPointColumns()
         self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
         self.AUFGABEN_SUMMEN_POSITION = self._calcAufgabenSumPositions()
-        self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()
         self.initUI()
+        #self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()          -> HIER WEITERMACHEN
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
         # |
@@ -204,17 +205,27 @@ class Kratzomat(QWidget):
         x = self.PUNKTE_ZEILEN.size
         y = self.MAPPEN_PRO_KLAUSUR
         punktematrix = np.empty([y,x],dtype=QLabel)
-        for i_x, x in enumerate(punktematrix):
-            for i_y, y in enumerate(x):
+        for i_x in range(x):
+            for i_y in range(y):
+                # Get corresponding rows and colums of point fields
+                i_col = self.PUNKTE_ZEILEN[0][i_x]
+                i_row = self.PUNKTE_SPALTEN[i_y]
                 print(f"({self.PUNKTE_ZEILEN[0][i_y]},{i_x})")
-                label = self._getLabelfromCoord(i_x,i_y)
+                punktematrix[i_x][i_y] = self._getLabelfromCoord(i_row,i_col)
 
                 
         print("HIER WEITERMACHEN")
 
     def _getLabelfromCoord(self,row,col) -> QLabel:
         lay = self.layout()
-        print("HIER WEITERMACHEN")
+        widgets = (lay.itemAt(i).widget() for i in range(lay.count()))
+        for widget in widgets:
+            if isinstance(widget, QLabel):
+                row_w, col_w, cols_w, rows_w = lay.getItemPosition(lay.indexOf(widget))
+                if row_w == row and col_w == col:
+                    return widget
+        return None
+
         
     
     def _highlightCurCell(self):
