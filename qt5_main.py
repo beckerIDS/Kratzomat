@@ -14,7 +14,7 @@ class Kratzomat(QWidget):
     key_esc = Qt.Key.Key_Escape.value
     key_return = Qt.Key.Key_Return.value
 
-    def __init__(self, MAPPEN_PRO_KLAUSUR: int = 10, AUFGABEN_PRO_KLASUR: list = ["KURZFRAGEN","A7","A8","A9"], PUNKTE_PRO_AUFGABE: list = [15,10,10,10]):
+    def __init__(self, MAPPEN_PRO_KLAUSUR: int = 10, AUFGABEN_PRO_KLASUR: list = ["A1","A7","A8","A9"], PUNKTE_PRO_AUFGABE: list = [15,10,10,10]):
         super().__init__()
         self.MAPPEN_PRO_KLAUSUR = MAPPEN_PRO_KLAUSUR
         self.AUFGABEN_PRO_KLASUR = AUFGABEN_PRO_KLASUR
@@ -35,11 +35,12 @@ class Kratzomat(QWidget):
         self.positions = [(x, y) for x in range(self.SUMME_ZEILEN) for y in range(self.SUMME_SPALTEN)]  # Alle Positionen im GRID
         self.romans = range(self.PREFIX_ZEILEN, self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR) # Vektor mit Positionen für römische Zahlen
         self.aufgabenpos = self._calcHeaderPositions()
-        self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN = self._calcPointColumns()
+        self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN, self.PUNKTE_ZEILEN_GETRENNT = self._calcPointColumns()
         self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
         self.AUFGABEN_SUMMEN_POSITION = self._calcAufgabenSumPositions()
         self.initUI()
         self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()       #   -> HIER WEITERMACHEN
+        self.AUFGABEN_SUMMEN_MATRIX = self._calcAufgabenSumMatrix()
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
         # |
@@ -141,9 +142,11 @@ class Kratzomat(QWidget):
         if a0.key() == self.key_up:
             print("Key up pressed")
             self.setPoint(1)
+            self._EinzelPunkteSumme()
             self.step(1)
         elif a0.key() == self.key_down:
             self.setPoint()
+            self._EinzelPunkteSumme()
             self.step(1)
             print("Key down pressed")
         elif a0.key() == self.key_left:
@@ -160,6 +163,7 @@ class Kratzomat(QWidget):
         else:           
             print(f"Unknown key pressed, ID: {a0.key()}")
     
+
     def _clearUI(self) -> None:
         print("_clearUI - Noch nicht programmiert")
 
@@ -202,12 +206,22 @@ class Kratzomat(QWidget):
         size = sum(self.PUNKTE_PRO_AUFGABE)
         point_col = np.zeros((1,size),int)
         point_letters = np.zeros((1,size),str)
+        point_col_seperated = np.zeros((1,len(self.PUNKTE_PRO_AUFGABE)),dtype=object)
         for r_idx,row in enumerate(zip(self.aufgabenpos,self.PUNKTE_PRO_AUFGABE)):
             for c_idx in range(row[1]):
                 index = row[0][1] - r_idx + c_idx - 1
                 point_col[0][index] = row[0][1] + c_idx
                 point_letters[0][index] = chr(65+c_idx)
-        return point_col, point_letters
+            point_col_seperated[0][r_idx] = np.arange(0,self.PUNKTE_PRO_AUFGABE[0]-1)+self.aufgabenpos[r_idx][1]
+        return point_col, point_letters, point_col_seperated
+    
+    def _calcAufgabenSumMatrix(self) -> np.empty:
+        x = self.AUFGABEN_SUMMEN_POSITION.size
+        y = self.PUNKTE_SPALTEN.size
+        sum_mat = np.zeros((y,x),dtype= QLabel)
+        for pos,widget in np.ndenumerate(sum_mat):
+            sum_mat[pos] = self._getLabelfromCoord(self.PUNKTE_SPALTEN[pos[0]],self.AUFGABEN_SUMMEN_POSITION[0][pos[1]])
+        return sum_mat
 
     def step(self,step: int) -> None:
         # Get current position:
@@ -221,16 +235,19 @@ class Kratzomat(QWidget):
             self.CUR_ZEILE += 1
         elif next_c >= 0 and next_c < self.PUNKTE_ZEILEN.size and step > 0:
             self.CUR_SPALTE += step
-        elif next_c > 0 and c_r > self.PREFIX_SPALTEN and step < 0:
-            self.CUR_SPALTE = next_c
-        elif next_c == 0 and step < 0:
-            self.CUR_SPALTE = 0
+        elif next_c < 0 and c_r > 0 and step < 0:
+            self.CUR_ZEILE -= 1
+            self.CUR_SPALTE = next_c + self.PUNKTE_ZEILEN.size
+        elif next_c >= 0 and step < 0:
+            self.CUR_SPALTE += step
             print("HIER WEITERMACHEN !!!!!!!!!!!!!!")
         else:
             print("Nichts verschoben")
         self._highlightCurCell()
         print(f"CUR_SPALTE: {self.CUR_SPALTE}, CUR_ZEILE: {self.CUR_ZEILE}")
         
+    def _EinzelPunkteSumme(self) -> None:
+        pass
     
     def _initPUNKTEMATRIX(self) -> np.empty:
         x = self.PUNKTE_ZEILEN.size

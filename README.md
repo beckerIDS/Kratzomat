@@ -8,3 +8,7 @@ ToDo:
 -Summenbildung
 -Punkte vergeben
 -Keypresses registrieren, wenn QButton vorhanden ist
+- Eingabe Aufgaben pro Klausur und Punkte pro Aufgabe in einem DICT
+
+Bugs:
+Anzahl anpassen von Aufgaben stürzt ab
