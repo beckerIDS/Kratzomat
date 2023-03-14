@@ -8,7 +8,7 @@ ToDo:
 -Summenbildung
 -Punkte vergeben
 -Keypresses registrieren, wenn QButton vorhanden ist
-- Eingabe Aufgaben pro Klausur und Punkte pro Aufgabe in einem DICT
+-Eintrag aus Feld zurücksetzen (-) wenn entf gedrückt wird
 
 Bugs:
 Anzahl anpassen von Aufgaben stürzt ab

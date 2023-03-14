@@ -13,19 +13,17 @@ class Kratzomat(QWidget):
     key_right = Qt.Key.Key_Right.value
     key_esc = Qt.Key.Key_Escape.value
     key_return = Qt.Key.Key_Return.value
+    key_delete = Qt.Key.Key_Delete.value
 
-    def __init__(self, MAPPEN_PRO_KLAUSUR: int = 10, AUFGABEN_PRO_KLASUR: list = ["A1","A7","A8","A9"], PUNKTE_PRO_AUFGABE: list = [15,10,10,10]):
+    def __init__(self, MAPPEN_PRO_KLAUSUR: int = 10, AUFGABEN: dict = {"Kurzfragen": 15,"A7": 10,"A8": 10,"A9": 10}):
         super().__init__()
         self.MAPPEN_PRO_KLAUSUR = MAPPEN_PRO_KLAUSUR
-        self.AUFGABEN_PRO_KLASUR = AUFGABEN_PRO_KLASUR
-        self.PUNKTE_PRO_AUFGABE = PUNKTE_PRO_AUFGABE
-        # Sanity check:
-        if len(AUFGABEN_PRO_KLASUR) != len(PUNKTE_PRO_AUFGABE):
-            print("Eingabe-Fehler")
-            return
+        self.AUFGABEN = AUFGABEN
+        self.AUFGABEN_PRO_KLASUR = len(AUFGABEN)
+        self.PUNKTE_PRO_AUFGABE = list(AUFGABEN.values())
         self.PREFIX_SPALTEN = 1
         self.SUFFIX_SPALTEN = 1
-        self.SUMME_SPALTEN = sum(PUNKTE_PRO_AUFGABE) + self.PREFIX_SPALTEN + len(AUFGABEN_PRO_KLASUR) + self.SUFFIX_SPALTEN
+        self.SUMME_SPALTEN = sum(self.PUNKTE_PRO_AUFGABE) + self.PREFIX_SPALTEN + self.AUFGABEN_PRO_KLASUR + self.SUFFIX_SPALTEN
         # 2 Zeilen für Header: Aufgabentitel + Buchstaben bzw. SIGMA + Zeilensumme
         self.PREFIX_ZEILEN = 2
         self.SUFFIX_ZEILEN = 1
@@ -84,7 +82,7 @@ class Kratzomat(QWidget):
                 elif position[0] == 0 and position[1] in self.aufgabenpos[:,1]:
                     idx = np.where(self.aufgabenpos[:,1] == position[1])
                     idx = idx[0][0]
-                    text = self.AUFGABEN_PRO_KLASUR[idx]
+                    text = list(self.AUFGABEN.keys())[idx]
                     row_span = 1
                     col_span = self.aufgabenpos[idx,3]
                 # Einzel Summen-Aufgaben
@@ -160,12 +158,11 @@ class Kratzomat(QWidget):
             self.close()    # Funktion beenden, wenn Esc gedrückt wird
         elif a0.key() == self.key_return:
             print("Key return pressed")
+        elif a0.key() == self.key_delete:
+            self._resetSinglePoint(self.CUR_ZEILE,self.CUR_SPALTE)
         else:           
             print(f"Unknown key pressed, ID: {a0.key()}")
     
-
-    def _clearUI(self) -> None:
-        print("_clearUI - Noch nicht programmiert")
 
     def _to_roman_numeral(self,value):
         roman_map = {                                   # 1
@@ -240,14 +237,16 @@ class Kratzomat(QWidget):
             self.CUR_SPALTE = next_c + self.PUNKTE_ZEILEN.size
         elif next_c >= 0 and step < 0:
             self.CUR_SPALTE += step
-            print("HIER WEITERMACHEN !!!!!!!!!!!!!!")
         else:
             print("Nichts verschoben")
         self._highlightCurCell()
         print(f"CUR_SPALTE: {self.CUR_SPALTE}, CUR_ZEILE: {self.CUR_ZEILE}")
         
     def _EinzelPunkteSumme(self) -> None:
-        pass
+        for pos, widget in np.ndenumerate(self.PUNKTE_MATRIX):
+            widget_text = str(widget.text())
+            if widget_text.isdigit():
+                print(f"Feld {pos} hat Zahl")
     
     def _initPUNKTEMATRIX(self) -> np.empty:
         x = self.PUNKTE_ZEILEN.size
@@ -276,6 +275,12 @@ class Kratzomat(QWidget):
                     return widget
         return None
 
+    def _resetSinglePoint(self,row: int, col: int) -> None:
+        self.PUNKTE_MATRIX[row][col].setText("-")
+
+    def _resetAllPoints(self) -> None:
+        for widget in self.PUNKTE_MATRIX:
+            pass
         
     
     def _highlightCurCell(self):
