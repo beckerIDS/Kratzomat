@@ -209,7 +209,7 @@ class Kratzomat(QWidget):
                 index = row[0][1] - r_idx + c_idx - 1
                 point_col[0][index] = row[0][1] + c_idx
                 point_letters[0][index] = chr(65+c_idx)
-            point_col_seperated[0][r_idx] = np.arange(0,self.PUNKTE_PRO_AUFGABE[0]-1)+self.aufgabenpos[r_idx][1]
+            point_col_seperated[0][r_idx] = np.arange(0,self.PUNKTE_PRO_AUFGABE[r_idx]-1)+self.aufgabenpos[r_idx][1]
         return point_col, point_letters, point_col_seperated
     
     def _calcAufgabenSumMatrix(self) -> np.empty:
@@ -240,12 +240,21 @@ class Kratzomat(QWidget):
     def _EinzelPunkteSumme(self) -> None:
         for pos, widget in np.ndenumerate(self.PUNKTE_MATRIX_MITWIDGETS):
             widget_text = str(widget.text())
+            # Fill PUNKTE_MATRIX_MITPUNKTEN
             if widget_text.isdigit():
                 print(f"Feld {pos} hat Zahl")
+                self.PUNKTE_MATRIX_MITPUNKTEN[pos] = int(widget_text)
+        # Berechne Summen
+        for pos, widget in np.ndenumerate(self.AUFGABEN_SUMMEN_MATRIX):
+            # Loop over einzelne Aufgaben
+            summe = 0
+            for spalte in self.PUNKTE_ZEILEN_GETRENNT[0][pos[0]]:
+                print(f"pos: {pos}, spalte: {spalte}")
+            
     
     def _initpunktematrix_widgets(self) -> np.empty:
         punktematrix_widgets = np.empty([self.KLAUSUREN_PRO_MAPPE,self.PUNKTE_GESAMT],dtype=QLabel)
-        punktematrix_punkte = np.empty([self.KLAUSUREN_PRO_MAPPE,self.PUNKTE_GESAMT],dtype=str)
+        punktematrix_punkte = np.zeros([self.KLAUSUREN_PRO_MAPPE,self.PUNKTE_GESAMT],dtype=int)
         for i_x in range(self.PUNKTE_GESAMT):
             for i_y in range(self.KLAUSUREN_PRO_MAPPE):
                 # Get corresponding rows and colums of point fields
