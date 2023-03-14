@@ -15,29 +15,29 @@ class Kratzomat(QWidget):
     key_return = Qt.Key.Key_Return.value
     key_delete = Qt.Key.Key_Delete.value
 
-    def __init__(self, MAPPEN_PRO_KLAUSUR: int = 10, AUFGABEN: dict = {"Kurzfragen": 15,"A7": 10,"A8": 10,"A9": 10}):
+    def __init__(self, KLAUSUREN_PRO_MAPPE: int = 3, AUFGABEN: dict = {"Kurzfragen": 15,"A7": 10,"A8": 10,"A9": 10,"A10":5}):
         super().__init__()
-        self.MAPPEN_PRO_KLAUSUR = MAPPEN_PRO_KLAUSUR
+        self.KLAUSUREN_PRO_MAPPE = KLAUSUREN_PRO_MAPPE
         self.AUFGABEN = AUFGABEN
         self.AUFGABEN_PRO_KLASUR = len(AUFGABEN)
         self.PUNKTE_PRO_AUFGABE = list(AUFGABEN.values())
+        self.PUNKTE_GESAMT = sum(self.PUNKTE_PRO_AUFGABE)
         self.PREFIX_SPALTEN = 1
         self.SUFFIX_SPALTEN = 1
-        self.SUMME_SPALTEN = sum(self.PUNKTE_PRO_AUFGABE) + self.PREFIX_SPALTEN + self.AUFGABEN_PRO_KLASUR + self.SUFFIX_SPALTEN
+        self.SUMME_SPALTEN = self.PUNKTE_GESAMT + self.PREFIX_SPALTEN + self.AUFGABEN_PRO_KLASUR + self.SUFFIX_SPALTEN
         # 2 Zeilen für Header: Aufgabentitel + Buchstaben bzw. SIGMA + Zeilensumme
         self.PREFIX_ZEILEN = 2
         self.SUFFIX_ZEILEN = 1
-        self.SUMME_ZEILEN = self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR + self.SUFFIX_ZEILEN
+        self.SUMME_ZEILEN = self.PREFIX_ZEILEN + KLAUSUREN_PRO_MAPPE + self.SUFFIX_ZEILEN
         # Benötigte Matrizen und Vektoren definieren
-        self.PUNKTE_SPALTEN = np.arange(0,self.MAPPEN_PRO_KLAUSUR) + self.PREFIX_ZEILEN
+        self.PUNKTE_SPALTEN = np.arange(0,self.KLAUSUREN_PRO_MAPPE) + self.PREFIX_ZEILEN
         self.positions = [(x, y) for x in range(self.SUMME_ZEILEN) for y in range(self.SUMME_SPALTEN)]  # Alle Positionen im GRID
-        self.romans = range(self.PREFIX_ZEILEN, self.PREFIX_ZEILEN + MAPPEN_PRO_KLAUSUR) # Vektor mit Positionen für römische Zahlen
+        self.romans = range(self.PREFIX_ZEILEN, self.PREFIX_ZEILEN + KLAUSUREN_PRO_MAPPE) # Vektor mit Positionen für römische Zahlen
         self.aufgabenpos = self._calcHeaderPositions()
         self.PUNKTE_ZEILEN, self.BUCHSTABEN_ZEILEN, self.PUNKTE_ZEILEN_GETRENNT = self._calcPointColumns()
-        self.PUNKTE_MATRIX = np.tile(self.PUNKTE_ZEILEN,(self.MAPPEN_PRO_KLAUSUR,1))
         self.AUFGABEN_SUMMEN_POSITION = self._calcAufgabenSumPositions()
         self.initUI()
-        self.PUNKTE_MATRIX = self._initPUNKTEMATRIX()       #   -> HIER WEITERMACHEN
+        self.PUNKTE_MATRIX_MITWIDGETS, self.PUNKTE_MATRIX_MITPUNKTEN = self._initpunktematrix_widgets()       #   -> HIER WEITERMACHEN
         self.AUFGABEN_SUMMEN_MATRIX = self._calcAufgabenSumMatrix()
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
@@ -185,7 +185,7 @@ class Kratzomat(QWidget):
     
     def _calcHeaderPositions(self) -> np.array:
         PUNKTE_PRO_AUFGABE_INKL_SIGMA = [x+1 for x in self.PUNKTE_PRO_AUFGABE] # Spaltenbreite muss um jeweils 1 erhöht werden damit Platz für SIGMA Zeichen ist
-        aufgabenpos = np.zeros((4,len(self.PUNKTE_PRO_AUFGABE)),int)
+        aufgabenpos = np.zeros((self.AUFGABEN_PRO_KLASUR,4),int)
         for idx, val in enumerate(self.PUNKTE_PRO_AUFGABE):
             aufgabenpos[idx][1] = self.PREFIX_SPALTEN+sum(PUNKTE_PRO_AUFGABE_INKL_SIGMA[:idx])
             aufgabenpos[idx][3] = val+1
@@ -213,28 +213,23 @@ class Kratzomat(QWidget):
         return point_col, point_letters, point_col_seperated
     
     def _calcAufgabenSumMatrix(self) -> np.empty:
-        x = self.AUFGABEN_SUMMEN_POSITION.size
-        y = self.PUNKTE_SPALTEN.size
-        sum_mat = np.zeros((y,x),dtype= QLabel)
+        sum_mat = np.zeros((self.KLAUSUREN_PRO_MAPPE,self.AUFGABEN_PRO_KLASUR),dtype= QLabel)
         for pos,widget in np.ndenumerate(sum_mat):
             sum_mat[pos] = self._getLabelfromCoord(self.PUNKTE_SPALTEN[pos[0]],self.AUFGABEN_SUMMEN_POSITION[0][pos[1]])
         return sum_mat
 
     def step(self,step: int) -> None:
-        # Get current position:
-        c_r = self.CUR_ZEILE
-        c_c = self.CUR_SPALTE
         # Überhang berechnen
-        next_c =  c_c + step
+        next_c =  self.CUR_SPALTE + step
         # Positiver Schritt
-        if next_c >= self.PUNKTE_ZEILEN.size and c_r < self.MAPPEN_PRO_KLAUSUR-1 and step > 0:
-            self.CUR_SPALTE = next_c - self.PUNKTE_ZEILEN.size
+        if next_c >= self.PUNKTE_GESAMT and self.CUR_ZEILE < self.KLAUSUREN_PRO_MAPPE-1 and step > 0:
+            self.CUR_SPALTE = next_c - self.PUNKTE_GESAMT
             self.CUR_ZEILE += 1
-        elif next_c >= 0 and next_c < self.PUNKTE_ZEILEN.size and step > 0:
+        elif next_c >= 0 and next_c < self.PUNKTE_GESAMT and step > 0:
             self.CUR_SPALTE += step
-        elif next_c < 0 and c_r > 0 and step < 0:
+        elif next_c < 0 and self.CUR_ZEILE > 0 and step < 0:
             self.CUR_ZEILE -= 1
-            self.CUR_SPALTE = next_c + self.PUNKTE_ZEILEN.size
+            self.CUR_SPALTE = next_c + self.PUNKTE_GESAMT
         elif next_c >= 0 and step < 0:
             self.CUR_SPALTE += step
         else:
@@ -243,26 +238,25 @@ class Kratzomat(QWidget):
         print(f"CUR_SPALTE: {self.CUR_SPALTE}, CUR_ZEILE: {self.CUR_ZEILE}")
         
     def _EinzelPunkteSumme(self) -> None:
-        for pos, widget in np.ndenumerate(self.PUNKTE_MATRIX):
+        for pos, widget in np.ndenumerate(self.PUNKTE_MATRIX_MITWIDGETS):
             widget_text = str(widget.text())
             if widget_text.isdigit():
                 print(f"Feld {pos} hat Zahl")
     
-    def _initPUNKTEMATRIX(self) -> np.empty:
-        x = self.PUNKTE_ZEILEN.size
-        y = self.MAPPEN_PRO_KLAUSUR
-        punktematrix = np.empty([y,x],dtype=QLabel)
-        for i_x in range(x):
-            for i_y in range(y):
+    def _initpunktematrix_widgets(self) -> np.empty:
+        punktematrix_widgets = np.empty([self.KLAUSUREN_PRO_MAPPE,self.PUNKTE_GESAMT],dtype=QLabel)
+        punktematrix_punkte = np.empty([self.KLAUSUREN_PRO_MAPPE,self.PUNKTE_GESAMT],dtype=str)
+        for i_x in range(self.PUNKTE_GESAMT):
+            for i_y in range(self.KLAUSUREN_PRO_MAPPE):
                 # Get corresponding rows and colums of point fields
                 i_col = self.PUNKTE_ZEILEN[0][i_x]
                 i_row = self.PUNKTE_SPALTEN[i_y]
                 #print(f"({self.PUNKTE_ZEILEN[0][i_y]},{i_x})")
-                punktematrix[i_y][i_x] = self._getLabelfromCoord(i_row,i_col)
-        return punktematrix
+                punktematrix_widgets[i_y][i_x] = self._getLabelfromCoord(i_row,i_col)
+        return punktematrix_widgets, punktematrix_punkte
 
     def setPoint(self,point: int = 0) -> None:
-        widget = self.PUNKTE_MATRIX[self.CUR_ZEILE][self.CUR_SPALTE]
+        widget = self.PUNKTE_MATRIX_MITWIDGETS[self.CUR_ZEILE][self.CUR_SPALTE]
         widget.setText(str(point))
 
     def _getLabelfromCoord(self,row,col) -> QLabel:
@@ -276,15 +270,15 @@ class Kratzomat(QWidget):
         return None
 
     def _resetSinglePoint(self,row: int, col: int) -> None:
-        self.PUNKTE_MATRIX[row][col].setText("-")
+        self.PUNKTE_MATRIX_MITWIDGETS[row][col].setText("-")
 
     def _resetAllPoints(self) -> None:
-        for widget in self.PUNKTE_MATRIX:
+        for widget in self.PUNKTE_MATRIX_MITWIDGETS:
             pass
         
     
     def _highlightCurCell(self):
-        for index, widget in np.ndenumerate(self.PUNKTE_MATRIX):
+        for index, widget in np.ndenumerate(self.PUNKTE_MATRIX_MITWIDGETS):
             if index[0] == self.CUR_ZEILE and index[1] == self.CUR_SPALTE:
                 widget.setStyleSheet("background-color: lightgreen")
             elif index[0] == self.CUR_ZEILE or index[1] == self.CUR_SPALTE:

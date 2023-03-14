@@ -7,8 +7,8 @@ ToDo:
 -Nächste Schritte, wenn Step kleiner 0
 -Summenbildung
 -Punkte vergeben
+- Summenfeld pro Aufgabe Grün, wenn alle Punkte vergeben worden
 -Keypresses registrieren, wenn QButton vorhanden ist
--Eintrag aus Feld zurücksetzen (-) wenn entf gedrückt wird
+
 
 Bugs:
-Anzahl anpassen von Aufgaben stürzt ab
