@@ -242,14 +242,22 @@ class Kratzomat(QWidget):
             widget_text = str(widget.text())
             # Fill PUNKTE_MATRIX_MITPUNKTEN
             if widget_text.isdigit():
-                print(f"Feld {pos} hat Zahl")
                 self.PUNKTE_MATRIX_MITPUNKTEN[pos] = int(widget_text)
         # Berechne Summen
         for pos, widget in np.ndenumerate(self.AUFGABEN_SUMMEN_MATRIX):
             # Loop over einzelne Aufgaben
-            summe = 0
-            for spalte in self.PUNKTE_ZEILEN_GETRENNT[0][pos[0]]:
-                print(f"pos: {pos}, spalte: {spalte}")
+            teilaufgabe_punkte_start = self.aufgabenpos[pos[1]][1]-self.PREFIX_SPALTEN-pos[1]
+            teilaufgabe_punkte_ende = self.aufgabenpos[pos[1]][1] + self.aufgabenpos[pos[1]][3] - self.PREFIX_SPALTEN-1-pos[1]
+            print(f"pos: {pos},anfang: {teilaufgabe_punkte_start}, ende: {teilaufgabe_punkte_ende}")
+            teilaufgabe_punkte = sum(self.PUNKTE_MATRIX_MITPUNKTEN[pos[0]][teilaufgabe_punkte_start:teilaufgabe_punkte_ende])
+            # Prüfen, ob alle Punkte pro Teilaufgabe vergeben wurden
+            einzelpunkte_widgets = self.PUNKTE_MATRIX_MITWIDGETS[pos[0]][teilaufgabe_punkte_start:teilaufgabe_punkte_ende]
+            if '-' in [x.text() for x in einzelpunkte_widgets]:
+                text = '-'
+            else:
+                text = f"{teilaufgabe_punkte}"
+            widget.setText(text)
+
             
     
     def _initpunktematrix_widgets(self) -> np.empty:
@@ -280,6 +288,7 @@ class Kratzomat(QWidget):
 
     def _resetSinglePoint(self,row: int, col: int) -> None:
         self.PUNKTE_MATRIX_MITWIDGETS[row][col].setText("-")
+        self._EinzelPunkteSumme()
 
     def _resetAllPoints(self) -> None:
         for widget in self.PUNKTE_MATRIX_MITWIDGETS:
