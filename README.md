@@ -9,6 +9,7 @@ ToDo:
 -Punkte vergeben
 - Summenfeld pro Aufgabe Grün, wenn alle Punkte vergeben worden
 -Keypresses registrieren, wenn QButton vorhanden ist
+-Easter Egg: Taste drücken für süßes Bild von einem Hund
 
 
 Bugs:
