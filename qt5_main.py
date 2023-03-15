@@ -3,7 +3,6 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
-import time
 
 
 class Kratzomat(QWidget):
@@ -39,6 +38,11 @@ class Kratzomat(QWidget):
         self.initUI()
         self.PUNKTE_MATRIX_MITWIDGETS, self.PUNKTE_MATRIX_MITPUNKTEN = self._initpunktematrix_widgets()       #   -> HIER WEITERMACHEN
         self.AUFGABEN_SUMMEN_MATRIX = self._calcAufgabenSumMatrix()
+        self.ZEILENSUMMEN_WIDGET_VEKTOR = self._initZeilenSummenWidgetVektor()
+        self.SPALTENSUMMEN_WIDGET_VEKTOR = self._initSpaltenSummenWidgetVektor()
+        self.SUMMENSUMMEN_WIDGET = self._getLabelfromCoord(self.SUMME_ZEILEN-1,self.SUMME_SPALTEN-1)
+        self._EinzelPunkteSumme()
+        self._highlightPointSum()
         # Übersicht Koordinaten:
         # -> x entspricht SUMME_ZEILEN entspricht positions[1]
         # |
@@ -59,7 +63,7 @@ class Kratzomat(QWidget):
             col_span = None
             if position == (0, 0):
                 # element = QPushButton("Clear")
-                # element.clicked.connect(self._clearUI)
+                # element.clicked.connect(self._resetAllPoints)
                 element = None                              # -> TEMPORÄRER FIX
             else:   # Alle anderen Instrumente sind QLabel's
                 # Labels unterscheiden sich nur im Text:
@@ -155,7 +159,7 @@ class Kratzomat(QWidget):
             self.step(1)
         elif a0.key() == self.key_esc:
             print("Key escape pressed")
-            self.close()    # Funktion beenden, wenn Esc gedrückt wird
+            self._resetAllPoints()
         elif a0.key() == self.key_return:
             print("Key return pressed")
         elif a0.key() == self.key_delete:
@@ -257,7 +261,49 @@ class Kratzomat(QWidget):
             else:
                 text = f"{teilaufgabe_punkte}"
             widget.setText(text)
+        self._GesamtSummen()
 
+    def _initZeilenSummenWidgetVektor(self) -> np.array:
+        vektor = np.empty([1,self.KLAUSUREN_PRO_MAPPE],dtype=QLabel)
+        for idx in range(self.KLAUSUREN_PRO_MAPPE):
+            vektor[0][idx] = self._getLabelfromCoord(self.PREFIX_ZEILEN+idx,self.SUMME_SPALTEN-1)
+        return vektor
+
+    def _initSpaltenSummenWidgetVektor(self) -> np.array:
+        vektor = np.empty([1,self.AUFGABEN_PRO_KLASUR],dtype=QLabel)
+        for idx in range(self.AUFGABEN_PRO_KLASUR):
+            vektor[0][idx] = self._getLabelfromCoord(self.SUMME_ZEILEN-1,self.aufgabenpos[:,1][idx])
+        return vektor
+
+    def _GesamtSummen(self) -> None:
+        # Spalten-Summen
+        sum_col = 0
+        for pos, widget in np.ndenumerate(self.SPALTENSUMMEN_WIDGET_VEKTOR):
+            values = [elem.text() for elem in self.AUFGABEN_SUMMEN_MATRIX[:,pos[1]]]
+            if all([item == '-' for item in values]):
+                text = "AUFGABEN-" + "\u03A3:"
+            else:
+                sum_cur_col = sum([int(digit) for digit in values if digit.isdigit()])
+                sum_col += sum_cur_col
+                text = f"AUFGABEN-\u03A3: {sum_cur_col}"
+            widget.setText(text)
+        # Zeilen-Summen:
+        sum_row = 0
+        for pos, widget in np.ndenumerate(self.ZEILENSUMMEN_WIDGET_VEKTOR):
+            values = [elem.text() for elem in self.AUFGABEN_SUMMEN_MATRIX[pos[1],:]]
+            if all([item == '-' for item in values]):
+                text = "AUFGABEN-" + "\u03A3:"
+            else:
+                sum_cur_row = sum([int(digit) for digit in values if digit.isdigit()])
+                sum_row += sum_cur_row
+                text = f"AUFGABEN-\u03A3: {sum_cur_row}"
+            widget.setText(text)
+        # Summen-Summe
+        self.SUMMENSUMMEN_WIDGET.setText(f"{sum_col} - {sum_row}")
+        if sum_row == sum_col and sum_col != 0:
+            self.SUMMENSUMMEN_WIDGET.setStyleSheet("background-color: green")
+        else:
+            self.SUMMENSUMMEN_WIDGET.setStyleSheet("background-color: none")
             
     
     def _initpunktematrix_widgets(self) -> np.empty:
@@ -291,8 +337,12 @@ class Kratzomat(QWidget):
         self._EinzelPunkteSumme()
 
     def _resetAllPoints(self) -> None:
-        for widget in self.PUNKTE_MATRIX_MITWIDGETS:
-            pass
+        for idx, widget in np.ndenumerate(self.PUNKTE_MATRIX_MITWIDGETS):
+            widget.setText('-')
+            self.CUR_SPALTE = 0
+            self.CUR_ZEILE = 0
+            self._highlightCurCell()
+            self._EinzelPunkteSumme()
         
     
     def _highlightCurCell(self):
@@ -303,6 +353,10 @@ class Kratzomat(QWidget):
                 widget.setStyleSheet("background-color: yellow")
             else:
                 widget.setStyleSheet("background-color: none")
+
+    def _highlightPointSum(self) -> None:
+        for index, widget in np.ndenumerate(self.AUFGABEN_SUMMEN_MATRIX):
+            widget.setStyleSheet("background-color: magenta")
 
 
 if __name__ == '__main__':
