@@ -14,7 +14,7 @@ class Kratzomat(QWidget):
     key_return = Qt.Key.Key_Return.value
     key_delete = Qt.Key.Key_Delete.value
 
-    def __init__(self, KLAUSUREN_PRO_MAPPE: int = 3, AUFGABEN: dict = {"Kurzfragen": 15,"A7": 10,"A8": 10,"A9": 10,"A10":5}):
+    def __init__(self, KLAUSUREN_PRO_MAPPE: int = 8, AUFGABEN: dict = {"Kurzfragen": 15,"A7": 10,"A8": 10,"A9": 10,"A10":5,"A11":23}):
         super().__init__()
         self.KLAUSUREN_PRO_MAPPE = KLAUSUREN_PRO_MAPPE
         self.AUFGABEN = AUFGABEN
@@ -69,7 +69,7 @@ class Kratzomat(QWidget):
                 # Labels unterscheiden sich nur im Text:
                 # X0,Y1: Mappe, damit roman Zahlen ersichtlich sind
                 if position == (1,0):
-                    text = "Mappe:"
+                    text = "Klausur:"
                 elif position == (self.SUMME_ZEILEN-1,self.SUMME_SPALTEN-1):
                     text = "SUMMISUM"
                 # X0,Yend: Text für Spaltensumme
